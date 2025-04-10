@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
   GlobalOperationModel,
-  StateTransitionRule,
-  GomComponentRef,
   MicroserviceRequirement,
+  ComponentRequirement,
 } from "../types/gom";
-import { ComponentState, ConsistencyType, ComponentModel } from "../types/msi";
+import { ConsistencyType } from "../types/msi";
+import { ComponentModel } from "../types/msi";
 import { Microservice } from "../types/microservice";
 import { Plus, Trash2 } from "lucide-react";
 import { microserviceApi } from "../services/microserviceApi";
@@ -22,11 +22,6 @@ export function GomForm({ gom, onSubmit, onCancel }: GomFormProps) {
     name: gom?.name ?? "",
     description: gom?.description ?? "",
     microserviceRequirements: gom?.microserviceRequirements ?? [],
-    inputs: gom?.inputs ?? [],
-    outputs: gom?.outputs ?? [],
-    preconditions: gom?.preconditions ?? [],
-    postconditions: gom?.postconditions ?? [],
-    stateTransitions: gom?.stateTransitions ?? [],
   });
 
   const [microservices, setMicroservices] = useState<Microservice[]>([]);
@@ -97,7 +92,7 @@ export function GomForm({ gom, onSubmit, onCancel }: GomFormProps) {
   const updateComponentRequirement = (
     microserviceIndex: number,
     componentIndex: number,
-    field: "componentId" | "consistencyType",
+    field: keyof ComponentRequirement,
     value: string
   ) => {
     setFormData(prev => {
@@ -111,34 +106,6 @@ export function GomForm({ gom, onSubmit, onCancel }: GomFormProps) {
       }
       return { ...prev, microserviceRequirements: newRequirements };
     });
-  };
-
-  const addStateTransition = () => {
-    setFormData(prev => ({
-      ...prev,
-      stateTransitions: [
-        ...prev.stateTransitions,
-        {
-          sourceServiceId: "",
-          componentModelId: "",
-          operationType: "READ",
-          targetState: ComponentState.SHARED_PLUS,
-          conditionExpression: "",
-        },
-      ],
-    }));
-  };
-
-  const updateStateTransition = (
-    index: number,
-    transition: StateTransitionRule
-  ) => {
-    setFormData(prev => ({
-      ...prev,
-      stateTransitions: prev.stateTransitions.map((t, i) =>
-        i === index ? transition : t
-      ),
-    }));
   };
 
   if (loading) {
@@ -298,89 +265,6 @@ export function GomForm({ gom, onSubmit, onCancel }: GomFormProps) {
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          State Transitions
-        </label>
-        <div className="mt-2 space-y-4">
-          {formData.stateTransitions.map((transition, index) => (
-            <div key={index} className="flex gap-4">
-              <select
-                value={transition.sourceServiceId}
-                onChange={e =>
-                  updateStateTransition(index, {
-                    ...transition,
-                    sourceServiceId: e.target.value,
-                  })
-                }
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              >
-                <option value="">Select a microservice...</option>
-                {microservices.map(ms => (
-                  <option key={ms.id} value={ms.id}>
-                    {ms.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={transition.componentModelId}
-                onChange={e =>
-                  updateStateTransition(index, {
-                    ...transition,
-                    componentModelId: e.target.value,
-                  })
-                }
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              >
-                <option value="">Select a component...</option>
-                {components.map(comp => (
-                  <option key={comp.id} value={comp.id}>
-                    {comp.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={transition.operationType}
-                onChange={e =>
-                  updateStateTransition(index, {
-                    ...transition,
-                    operationType: e.target.value as "READ" | "WRITE",
-                  })
-                }
-                className="w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              >
-                <option value="READ">Read</option>
-                <option value="WRITE">Write</option>
-              </select>
-              <select
-                value={transition.targetState}
-                onChange={e =>
-                  updateStateTransition(index, {
-                    ...transition,
-                    targetState: e.target.value as ComponentState,
-                  })
-                }
-                className="w-48 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              >
-                {Object.values(ComponentState).map(state => (
-                  <option key={state} value={state}>
-                    {state}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addStateTransition}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Transition
-          </button>
         </div>
       </div>
 

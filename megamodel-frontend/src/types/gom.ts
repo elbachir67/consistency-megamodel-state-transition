@@ -10,17 +10,13 @@ export interface MicroserviceRequirement {
   requiredComponents: ComponentRequirement[];
 }
 
-// Base GOM specification
 export interface GlobalOperationModel {
   id: string;
   name: string;
   description: string;
   microserviceRequirements: MicroserviceRequirement[];
-  preconditions: string[];
-  postconditions: string[];
 }
 
-// GOM Instance represents a running instance of a GOM
 export interface GomInstance {
   id: string;
   gomId: string;

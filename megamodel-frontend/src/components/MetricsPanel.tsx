@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BarChart, Activity, Clock, AlertCircle } from "lucide-react";
+import { BarChart, Activity, Clock, AlertCircle, Terminal } from "lucide-react";
 import { ComponentState } from "../types/msi";
 
 interface Metrics {
@@ -11,6 +11,15 @@ interface Metrics {
     microserviceId: string;
     fromState: ComponentState;
     toState: ComponentState;
+    operation: string;
+    timestamp: string;
+  }>;
+  componentLogs: Array<{
+    componentId: string;
+    microserviceId: string;
+    operation: string;
+    details?: string;
+    type: "STATE_TRANSITION" | "OPERATION";
     timestamp: string;
   }>;
 }
@@ -19,6 +28,9 @@ export function MetricsPanel() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"transitions" | "logs">(
+    "transitions"
+  );
 
   useEffect(() => {
     fetchMetrics();
@@ -28,8 +40,8 @@ export function MetricsPanel() {
 
   async function fetchMetrics() {
     try {
-      const [distribution, operations, transitions, recent] = await Promise.all(
-        [
+      const [distribution, operations, transitions, recent, logs] =
+        await Promise.all([
           fetch("http://localhost:8080/api/metrics/state-distribution").then(
             res => res.json()
           ),
@@ -42,14 +54,17 @@ export function MetricsPanel() {
           fetch("http://localhost:8080/api/metrics/recent-transitions").then(
             res => res.json()
           ),
-        ]
-      );
+          fetch("http://localhost:8080/api/metrics/component-logs").then(res =>
+            res.json()
+          ),
+        ]);
 
       setMetrics({
         stateDistribution: distribution,
         totalOperations: operations,
         transitionCounts: transitions,
         recentTransitions: recent,
+        componentLogs: logs,
       });
       setError(null);
     } catch (error) {
@@ -136,66 +151,88 @@ export function MetricsPanel() {
           </div>
 
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
-              Recent State Transitions
-            </h4>
-            <div className="space-y-2">
-              {metrics.recentTransitions.map((transition, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between bg-gray-50 p-3 rounded-lg text-sm"
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-gray-700">
+                Activity Log
+              </h4>
+              <div className="flex rounded-md shadow-sm">
+                <button
+                  onClick={() => setActiveTab("transitions")}
+                  className={`px-4 py-2 text-sm font-medium rounded-l-md ${
+                    activeTab === "transitions"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-600">
-                      {transition.microserviceId} → {transition.componentId}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStateColor(
-                        transition.fromState
-                      )}`}
-                    >
-                      {transition.fromState}
-                    </span>
-                    <span className="text-gray-400">→</span>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStateColor(
-                        transition.toState
-                      )}`}
-                    >
-                      {transition.toState}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                  Transitions
+                </button>
+                <button
+                  onClick={() => setActiveTab("logs")}
+                  className={`px-4 py-2 text-sm font-medium rounded-r-md ${
+                    activeTab === "logs"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Logs
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
-              State Transition Counts
-            </h4>
             <div className="space-y-2">
-              {Object.entries(metrics.transitionCounts).map(
-                ([state, count]) => (
-                  <div key={state} className="flex items-center">
-                    <span className="flex-1 text-sm text-gray-600">
-                      {state}
-                    </span>
-                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-indigo-500"
-                        style={{
-                          width: `${(count / metrics.totalOperations) * 100}%`,
-                        }}
-                      ></div>
+              {activeTab === "transitions"
+                ? metrics.recentTransitions.map((transition, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between bg-gray-50 p-3 rounded-lg text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-gray-400" />
+                        <span className="text-gray-600">
+                          {transition.microserviceId} → {transition.componentId}
+                        </span>
+                        <span className="text-gray-500">
+                          ({transition.operation})
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStateColor(
+                            transition.fromState
+                          )}`}
+                        >
+                          {transition.fromState}
+                        </span>
+                        <span className="text-gray-400">→</span>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStateColor(
+                            transition.toState
+                          )}`}
+                        >
+                          {transition.toState}
+                        </span>
+                      </div>
                     </div>
-                    <span className="ml-2 text-sm text-gray-500">{count}</span>
-                  </div>
-                )
-              )}
+                  ))
+                : metrics.componentLogs.map((log, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between bg-gray-50 p-3 rounded-lg text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Terminal className="h-4 w-4 text-gray-400" />
+                        <span className="text-gray-600">
+                          {log.microserviceId} → {log.componentId}
+                        </span>
+                        <span className="text-gray-500">{log.operation}</span>
+                      </div>
+                      {log.details && (
+                        <span className="text-gray-500 text-xs">
+                          {log.details}
+                        </span>
+                      )}
+                    </div>
+                  ))}
             </div>
           </div>
         </div>

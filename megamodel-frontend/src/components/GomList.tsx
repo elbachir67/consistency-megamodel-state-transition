@@ -7,15 +7,13 @@ import {
   ChevronDown,
   ChevronRight,
   Activity,
-  Clock,
+  Book,
+  Edit3,
 } from "lucide-react";
-import {
-  GlobalOperationModel,
-  GomInstance,
-  MicroserviceComponentState,
-} from "../types/gom";
+import { GlobalOperationModel, GomInstance } from "../types/gom";
 import { useGomStore } from "../stores/gomStore";
 import { gomApi } from "../services/gomApi";
+import { api } from "../services/api";
 
 interface GomListProps {
   onEdit: (gom: GlobalOperationModel) => void;
@@ -96,6 +94,26 @@ export function GomList({ onEdit }: GomListProps) {
     }
   };
 
+  const handleOperation = async (
+    type: "read" | "write",
+    microserviceId: string,
+    componentId: string,
+    instanceId: string,
+    gomId: string
+  ) => {
+    try {
+      if (type === "read") {
+        await api.triggerReadOperation(microserviceId, componentId);
+      } else {
+        await api.triggerWriteOperation(microserviceId, componentId);
+      }
+      await fetchInstances(gomId);
+    } catch (error) {
+      console.error(`Error triggering ${type} operation:`, error);
+      setError(`Failed to perform ${type} operation. Please try again.`);
+    }
+  };
+
   const getStateColor = (state: string) => {
     switch (state) {
       case "MODIFIED":
@@ -132,21 +150,18 @@ export function GomList({ onEdit }: GomListProps) {
         </div>
 
         <div className="space-y-2">
-          <h5 className="text-sm font-medium text-gray-700">
-            State Transitions
-          </h5>
+          <h5 className="text-sm font-medium text-gray-700">Components</h5>
           {details.stateTransitions?.map((transition: any, index: number) => (
-            <div
-              key={index}
-              className="flex items-center justify-between bg-gray-50 p-2 rounded-lg text-sm"
-            >
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-gray-400" />
-                <span>
-                  {transition.microserviceId} → {transition.componentId}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
+            <div key={index} className="bg-gray-50 p-3 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-gray-400" />
+                  <span className="font-medium">
+                    {transition.microserviceId}
+                  </span>
+                  <span className="text-gray-500">→</span>
+                  <span>{transition.componentId}</span>
+                </div>
                 <span
                   className={`px-2 py-1 rounded-full text-xs font-medium ${getStateColor(
                     transition.state
@@ -154,9 +169,38 @@ export function GomList({ onEdit }: GomListProps) {
                 >
                   {transition.state}
                 </span>
-                <span className="text-gray-500 text-xs">
-                  {new Date(transition.timestamp).toLocaleTimeString()}
-                </span>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() =>
+                    handleOperation(
+                      "read",
+                      transition.microserviceId,
+                      transition.componentId,
+                      instance.id,
+                      instance.gomId
+                    )
+                  }
+                  className="flex-1 inline-flex items-center justify-center px-3 py-1 text-xs font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100"
+                >
+                  <Book className="h-3 w-3 mr-1" />
+                  Read
+                </button>
+                <button
+                  onClick={() =>
+                    handleOperation(
+                      "write",
+                      transition.microserviceId,
+                      transition.componentId,
+                      instance.id,
+                      instance.gomId
+                    )
+                  }
+                  className="flex-1 inline-flex items-center justify-center px-3 py-1 text-xs font-medium rounded-md text-purple-700 bg-purple-50 hover:bg-purple-100"
+                >
+                  <Edit3 className="h-3 w-3 mr-1" />
+                  Write
+                </button>
               </div>
             </div>
           ))}

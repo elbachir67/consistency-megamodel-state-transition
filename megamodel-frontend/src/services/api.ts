@@ -12,28 +12,38 @@ const defaultHeaders = {
   Accept: "application/json",
 };
 
+async function handleResponse(response: Response) {
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `HTTP error! status: ${response.status}`);
+  }
+  return response;
+}
+
 export const api = {
   async fetchComponents(): Promise<ComponentModel[]> {
-    const response = await fetch(`${API_BASE_URL}/components`, {
-      headers: defaultHeaders,
-      mode: "cors", // Added explicit CORS mode
-      credentials: "include",
-    });
-    if (!response.ok) throw new Error("Failed to fetch components");
-    return response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/components`, {
+        headers: defaultHeaders,
+        mode: "cors",
+        credentials: "include",
+      });
+      await handleResponse(response);
+      return response.json();
+    } catch (error) {
+      console.error("Error fetching components:", error);
+      throw new Error("Failed to fetch components");
+    }
   },
 
   async fetchComponentStates(): Promise<MicroserviceComponent[]> {
     try {
       const response = await fetch(`${API_BASE_URL}/states`, {
         headers: defaultHeaders,
-        mode: "cors", // Added explicit CORS mode
+        mode: "cors",
         credentials: "include",
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      await handleResponse(response);
 
       const data = await response.json();
 
@@ -56,15 +66,20 @@ export const api = {
   async createComponent(
     component: Partial<ComponentModel>
   ): Promise<ComponentModel> {
-    const response = await fetch(`${API_BASE_URL}/components`, {
-      method: "POST",
-      headers: defaultHeaders,
-      mode: "cors", // Added explicit CORS mode
-      credentials: "include",
-      body: JSON.stringify(component),
-    });
-    if (!response.ok) throw new Error("Failed to create component");
-    return response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/components`, {
+        method: "POST",
+        headers: defaultHeaders,
+        mode: "cors",
+        credentials: "include",
+        body: JSON.stringify(component),
+      });
+      await handleResponse(response);
+      return response.json();
+    } catch (error) {
+      console.error("Error creating component:", error);
+      throw new Error("Failed to create component");
+    }
   },
 
   async updateComponentState(
@@ -72,48 +87,73 @@ export const api = {
     componentId: string,
     consistencyType: ConsistencyType
   ): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/states/${microserviceId}/${componentId}`,
-      {
-        method: "PUT",
-        headers: defaultHeaders,
-        mode: "cors", // Added explicit CORS mode
-        credentials: "include",
-        body: JSON.stringify({ consistencyType }),
-      }
-    );
-    if (!response.ok) throw new Error("Failed to update component state");
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/states/${microserviceId}/${componentId}`,
+        {
+          method: "PUT",
+          headers: defaultHeaders,
+          mode: "cors",
+          credentials: "include",
+          body: JSON.stringify({ consistencyType }),
+        }
+      );
+      await handleResponse(response);
+    } catch (error) {
+      console.error("Error updating component state:", error);
+      throw new Error("Failed to update component state");
+    }
   },
 
   async triggerReadOperation(
     microserviceId: string,
     componentId: string
   ): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/states/operations/read?microserviceId=${microserviceId}&componentId=${componentId}`,
-      {
-        method: "POST",
-        headers: defaultHeaders,
-        mode: "cors", // Added explicit CORS mode
-        credentials: "include",
-      }
-    );
-    if (!response.ok) throw new Error("Failed to trigger read operation");
+    try {
+      const params = new URLSearchParams({
+        microserviceId,
+        componentId,
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/states/operations/read?${params}`,
+        {
+          method: "POST",
+          headers: defaultHeaders,
+          mode: "cors",
+          credentials: "include",
+        }
+      );
+      await handleResponse(response);
+    } catch (error) {
+      console.error("Error triggering read operation:", error);
+      throw new Error("Failed to trigger read operation");
+    }
   },
 
   async triggerWriteOperation(
     microserviceId: string,
     componentId: string
   ): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/states/operations/write?microserviceId=${microserviceId}&componentId=${componentId}`,
-      {
-        method: "POST",
-        headers: defaultHeaders,
-        mode: "cors", // Added explicit CORS mode
-        credentials: "include",
-      }
-    );
-    if (!response.ok) throw new Error("Failed to trigger write operation");
+    try {
+      const params = new URLSearchParams({
+        microserviceId,
+        componentId,
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/states/operations/write?${params}`,
+        {
+          method: "POST",
+          headers: defaultHeaders,
+          mode: "cors",
+          credentials: "include",
+        }
+      );
+      await handleResponse(response);
+    } catch (error) {
+      console.error("Error triggering write operation:", error);
+      throw new Error("Failed to trigger write operation");
+    }
   },
 };

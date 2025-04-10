@@ -35,4 +35,9 @@ public class MetricsController {
     public List<Map<String, Object>> getRecentTransitions() {
         return metricsService.getRecentTransitions();
     }
+
+    @GetMapping("/component-logs")
+    public List<Map<String, Object>> getComponentLogs() {
+        return metricsService.getComponentLogs();
+    }
 }

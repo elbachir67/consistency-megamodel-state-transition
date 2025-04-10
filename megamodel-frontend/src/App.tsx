@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Activity, Plus, RefreshCw, Settings, Edit3, Book } from "lucide-react";
+import { Activity, Plus, RefreshCw, Settings } from "lucide-react";
 import { ComponentModel, ComponentState } from "./types/msi";
 import { useComponentStore } from "./stores/componentStore";
 import { api } from "./services/api";
 
 export default function App() {
   const [loading, setLoading] = useState(true);
-  const { components, setComponents, updateComponent } = useComponentStore();
-  const [selectedComponent, setSelectedComponent] = useState<string | null>(
-    null
-  );
+  const { components, setComponents } = useComponentStore();
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newComponent, setNewComponent] = useState({
@@ -37,25 +34,6 @@ export default function App() {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleOperation(
-    type: "read" | "write",
-    componentId: string,
-    microserviceId: string
-  ) {
-    try {
-      setError(null);
-      if (type === "read") {
-        await api.triggerReadOperation(microserviceId, componentId);
-      } else {
-        await api.triggerWriteOperation(microserviceId, componentId);
-      }
-      await fetchComponents();
-    } catch (error) {
-      console.error(`Error triggering ${type} operation:`, error);
-      setError(`Failed to perform ${type} operation. Please try again.`);
     }
   }
 
@@ -244,39 +222,9 @@ export default function App() {
                   )}
                 </div>
                 <div className="px-4 py-4 sm:px-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">Version</span>
-                      <span className="font-medium">{component.version}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() =>
-                          handleOperation(
-                            "read",
-                            component.id,
-                            component.microserviceId!
-                          )
-                        }
-                        className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <Book className="h-4 w-4 mr-2" />
-                        Read
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleOperation(
-                            "write",
-                            component.id,
-                            component.microserviceId!
-                          )
-                        }
-                        className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                      >
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        Write
-                      </button>
-                    </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Version</span>
+                    <span className="font-medium">{component.version}</span>
                   </div>
                 </div>
               </div>

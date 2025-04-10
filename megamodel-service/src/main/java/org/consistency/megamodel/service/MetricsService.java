@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,7 +18,8 @@ public class MetricsService {
     private final Map<ComponentState, AtomicLong> stateTransitionCounts = new EnumMap<>(ComponentState.class);
     private final AtomicLong totalOperations = new AtomicLong(0);
     private final Queue<Map<String, Object>> recentTransitions = new ConcurrentLinkedQueue<>();
-    private static final int MAX_RECENT_TRANSITIONS = 10;
+    private final Queue<Map<String, Object>> componentLogs = new ConcurrentLinkedQueue<>();
+    private static final int MAX_RECENT_ITEMS = 50;
     
     {
         for (ComponentState state : ComponentState.values()) {
@@ -27,7 +27,13 @@ public class MetricsService {
         }
     }
     
-    public void recordStateTransition(String componentId, String microserviceId, ComponentState fromState, ComponentState toState) {
+    public void recordStateTransition(
+        String componentId,
+        String microserviceId,
+        ComponentState fromState,
+        ComponentState toState,
+        String operation
+    ) {
         stateTransitionCounts.get(toState).incrementAndGet();
         totalOperations.incrementAndGet();
 
@@ -36,15 +42,44 @@ public class MetricsService {
         transition.put("microserviceId", microserviceId);
         transition.put("fromState", fromState);
         transition.put("toState", toState);
+        transition.put("operation", operation);
         transition.put("timestamp", LocalDateTime.now());
 
         recentTransitions.offer(transition);
-        while (recentTransitions.size() > MAX_RECENT_TRANSITIONS) {
+        while (recentTransitions.size() > MAX_RECENT_ITEMS) {
             recentTransitions.poll();
+        }
+
+        // Add to component logs
+        Map<String, Object> log = new HashMap<>(transition);
+        log.put("type", "STATE_TRANSITION");
+        componentLogs.offer(log);
+        while (componentLogs.size() > MAX_RECENT_ITEMS) {
+            componentLogs.poll();
+        }
+    }
+
+    public void logComponentOperation(
+        String componentId,
+        String microserviceId,
+        String operation,
+        String details
+    ) {
+        Map<String, Object> log = new HashMap<>();
+        log.put("componentId", componentId);
+        log.put("microserviceId", microserviceId);
+        log.put("operation", operation);
+        log.put("details", details);
+        log.put("timestamp", LocalDateTime.now());
+        log.put("type", "OPERATION");
+
+        componentLogs.offer(log);
+        while (componentLogs.size() > MAX_RECENT_ITEMS) {
+            componentLogs.poll();
         }
     }
     
-    @Scheduled(fixedRate = 60000) // Every minute
+    @Scheduled(fixedRate = 60000)
     public void logMetrics() {
         Map<ComponentState, Long> currentCounts = new EnumMap<>(ComponentState.class);
         componentModelServiceRepo.findAll().forEach(entity -> 
@@ -84,5 +119,9 @@ public class MetricsService {
 
     public List<Map<String, Object>> getRecentTransitions() {
         return new ArrayList<>(recentTransitions);
+    }
+
+    public List<Map<String, Object>> getComponentLogs() {
+        return new ArrayList<>(componentLogs);
     }
 }

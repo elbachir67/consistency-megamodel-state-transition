@@ -29,7 +29,7 @@ public class StateTransitionService {
         ComponentState oldState = entity.getState();
         
         // Writing service always transitions to MODIFIED state
-        transitionToModified(entity);
+        transitionToModified(entity, "WRITE");
         
         // Find all other services that have this component
         List<ComponentModelServiceEntity> otherServices = componentModelServiceRepo
@@ -37,20 +37,24 @@ public class StateTransitionService {
         
         // Apply state transitions based on consistency requirements
         for (ComponentModelServiceEntity otherService : otherServices) {
-            applyConsistencyBasedTransition(otherService, entity);
+            applyConsistencyBasedTransition(otherService, entity, "WRITE");
         }
     }
     
-    private void transitionToModified(ComponentModelServiceEntity entity) {
+    private void transitionToModified(ComponentModelServiceEntity entity, String operation) {
         ComponentState oldState = entity.getState();
         entity.setState(ComponentState.MODIFIED);
         entity.setVersion(entity.getVersion() + 1);
         entity.setTimestamp(LocalDateTime.now());
         componentModelServiceRepo.save(entity);
-        publishStateChange(entity, oldState);
+        publishStateChange(entity, oldState, operation);
     }
     
-    private void applyConsistencyBasedTransition(ComponentModelServiceEntity service, ComponentModelServiceEntity modifiedEntity) {
+    private void applyConsistencyBasedTransition(
+        ComponentModelServiceEntity service,
+        ComponentModelServiceEntity modifiedEntity,
+        String operation
+    ) {
         ComponentState oldState = service.getState();
         ComponentState newState = determineNewState(service.getConsistencyType(), service.getState());
         
@@ -59,11 +63,11 @@ public class StateTransitionService {
             service.setTimestamp(LocalDateTime.now());
             
             if (service.getConsistencyType() == ConsistencyType.BOUNDED_STALENESS) {
-                service.setStalenessBound(LocalDateTime.now().plusSeconds(30)); // Configurable staleness bound
+                service.setStalenessBound(LocalDateTime.now().plusSeconds(30));
             }
             
             componentModelServiceRepo.save(service);
-            publishStateChange(service, oldState);
+            publishStateChange(service, oldState, operation);
         }
     }
     
@@ -81,7 +85,7 @@ public class StateTransitionService {
                 return currentState;
                 
             case MONOTONIC_READS:
-                return currentState; // State remains unchanged for monotonic reads
+                return currentState;
                 
             default:
                 return currentState;
@@ -125,7 +129,7 @@ public class StateTransitionService {
             ComponentState oldState = entity.getState();
             entity.setState(ComponentState.INVALID);
             componentModelServiceRepo.save(entity);
-            publishStateChange(entity, oldState);
+            publishStateChange(entity, oldState, "READ");
             handleInvalidState(entity);
         }
     }
@@ -159,7 +163,7 @@ public class StateTransitionService {
         }
         
         componentModelServiceRepo.save(entity);
-        publishStateChange(entity, oldState);
+        publishStateChange(entity, oldState, "READ");
     }
     
     public ComponentModelServiceEntity findAuthoritativeSource(String componentId) {
@@ -181,7 +185,11 @@ public class StateTransitionService {
             .orElse(null);
     }
     
-    private void publishStateChange(ComponentModelServiceEntity entity, ComponentState oldState) {
+    private void publishStateChange(
+        ComponentModelServiceEntity entity,
+        ComponentState oldState,
+        String operation
+    ) {
         if (oldState != entity.getState()) {
             log.debug("Publishing state change event: {} -> {} for component {} in microservice {}",
                 oldState,
@@ -203,7 +211,8 @@ public class StateTransitionService {
                 entity.getComponentModel().getId(),
                 entity.getMicroservice().getId(),
                 oldState,
-                entity.getState()
+                entity.getState(),
+                operation
             );
         }
     }
