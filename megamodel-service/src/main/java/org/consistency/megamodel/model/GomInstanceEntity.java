@@ -40,9 +40,3 @@ public class GomInstanceEntity {
         updatedAt = LocalDateTime.now();
     }
 }
-
-enum GomInstanceStatus {
-    RUNNING,
-    COMPLETED,
-    FAILED
-}

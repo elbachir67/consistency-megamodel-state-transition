@@ -3,8 +3,8 @@ package org.consistency.megamodel.service;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.consistency.megamodel.model.*;
-import org.consistency.megamodel.repository.GomInstanceRepository;
-import org.consistency.megamodel.repository.GlobalOperationModelRepository;
+import org.consistency.megamodel.model.GomInstanceRepository;
+import org.consistency.megamodel.model.GlobalOperationModelRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,17 +42,15 @@ public class GomInstanceService {
         instance.setUpdatedAt(LocalDateTime.now());
 
         // Initialize component states based on GOM requirements
-        for (MicroserviceRequirementEntity requirement : gom.getMicroserviceRequirements()) {
-            for (ComponentRequirementEntity componentReq : requirement.getRequiredComponents()) {
-                MicroserviceComponentStateEntity state = new MicroserviceComponentStateEntity();
-                state.setMicroserviceId(requirement.getMicroserviceId());
-                state.setComponentId(componentReq.getComponentId());
-                state.setState(ComponentState.INVALID);
-                state.setConsistencyType(componentReq.getConsistencyType());
-                state.setVersion(0L);
-                state.setTimestamp(LocalDateTime.now());
-                instance.getMicroserviceStates().add(state);
-            }
+        for (GomRequirementEntity requirement : gom.getRequirements()) {
+            MicroserviceComponentStateEntity state = new MicroserviceComponentStateEntity();
+            state.setMicroserviceId(requirement.getMicroservice().getId());
+            state.setComponentId(requirement.getComponent().getId());
+            state.setState(ComponentState.INVALID);
+            state.setConsistencyType(requirement.getConsistencyType());
+            state.setVersion(0L);
+            state.setTimestamp(LocalDateTime.now());
+            instance.getMicroserviceStates().add(state);
         }
 
         return gomInstanceRepository.save(instance);
@@ -63,5 +61,14 @@ public class GomInstanceService {
         GomInstanceEntity instance = gomInstanceRepository.findById(instanceId)
                 .orElseThrow(() -> new EntityNotFoundException("Instance not found: " + instanceId));
         gomInstanceRepository.delete(instance);
+    }
+
+    @Transactional
+    public GomInstanceEntity updateInstance(GomInstanceEntity instance) {
+        if (!gomInstanceRepository.existsById(instance.getId())) {
+            throw new EntityNotFoundException("Instance not found: " + instance.getId());
+        }
+        instance.setUpdatedAt(LocalDateTime.now());
+        return gomInstanceRepository.save(instance);
     }
 }
