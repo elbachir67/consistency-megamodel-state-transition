@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -28,5 +29,10 @@ public class MetricsController {
     @GetMapping("/transition-counts")
     public Map<ComponentState, Long> getTransitionCounts() {
         return metricsService.getStateTransitionCounts();
+    }
+
+    @GetMapping("/recent-transitions")
+    public List<Map<String, Object>> getRecentTransitions() {
+        return metricsService.getRecentTransitions();
     }
 }

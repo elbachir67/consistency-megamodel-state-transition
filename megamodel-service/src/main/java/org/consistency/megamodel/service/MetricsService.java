@@ -6,9 +6,11 @@ import org.consistency.megamodel.model.ComponentModelServiceRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.EnumMap;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -16,6 +18,8 @@ public class MetricsService {
     private final ComponentModelServiceRepository componentModelServiceRepo;
     private final Map<ComponentState, AtomicLong> stateTransitionCounts = new EnumMap<>(ComponentState.class);
     private final AtomicLong totalOperations = new AtomicLong(0);
+    private final Queue<Map<String, Object>> recentTransitions = new ConcurrentLinkedQueue<>();
+    private static final int MAX_RECENT_TRANSITIONS = 10;
     
     {
         for (ComponentState state : ComponentState.values()) {
@@ -23,9 +27,21 @@ public class MetricsService {
         }
     }
     
-    public void recordStateTransition(ComponentState state) {
-        stateTransitionCounts.get(state).incrementAndGet();
+    public void recordStateTransition(String componentId, String microserviceId, ComponentState fromState, ComponentState toState) {
+        stateTransitionCounts.get(toState).incrementAndGet();
         totalOperations.incrementAndGet();
+
+        Map<String, Object> transition = new HashMap<>();
+        transition.put("componentId", componentId);
+        transition.put("microserviceId", microserviceId);
+        transition.put("fromState", fromState);
+        transition.put("toState", toState);
+        transition.put("timestamp", LocalDateTime.now());
+
+        recentTransitions.offer(transition);
+        while (recentTransitions.size() > MAX_RECENT_TRANSITIONS) {
+            recentTransitions.poll();
+        }
     }
     
     @Scheduled(fixedRate = 60000) // Every minute
@@ -64,5 +80,9 @@ public class MetricsService {
         stateTransitionCounts.forEach((state, count) -> 
             counts.put(state, count.get()));
         return counts;
+    }
+
+    public List<Map<String, Object>> getRecentTransitions() {
+        return new ArrayList<>(recentTransitions);
     }
 }

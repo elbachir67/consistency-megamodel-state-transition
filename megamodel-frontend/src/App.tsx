@@ -1,14 +1,6 @@
 import React, { useEffect, useState } from "react";
-import {
-  Activity,
-  Plus,
-  RefreshCw,
-  Settings,
-  Edit3,
-  Book,
-  AlertTriangle,
-} from "lucide-react";
-import { ComponentModel, ComponentState, ConsistencyType } from "./types/msi";
+import { Activity, Plus, RefreshCw, Settings, Edit3, Book } from "lucide-react";
+import { ComponentModel, ComponentState } from "./types/msi";
 import { useComponentStore } from "./stores/componentStore";
 import { api } from "./services/api";
 
@@ -28,7 +20,6 @@ export default function App() {
 
   useEffect(() => {
     fetchComponents();
-    // Set up polling for regular updates
     const interval = setInterval(fetchComponents, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -46,24 +37,6 @@ export default function App() {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleConsistencyTypeChange(
-    componentId: string,
-    microserviceId: string,
-    newType: ConsistencyType,
-    component: ComponentModel
-  ) {
-    try {
-      await api.updateComponentState(microserviceId, componentId, newType);
-      updateComponent(componentId, {
-        ...component,
-        consistencyType: newType,
-      });
-    } catch (error) {
-      console.error("Error updating consistency type:", error);
-      setError("Failed to update consistency type. Please try again.");
     }
   }
 
@@ -118,6 +91,12 @@ export default function App() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="h-8 w-8 text-indigo-600" />
+            <h1 className="text-2xl font-bold text-gray-900">
+              MSI Consistency Manager
+            </h1>
+          </div>
           <div className="flex items-center gap-3">
             <button
               onClick={fetchComponents}
@@ -143,7 +122,6 @@ export default function App() {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {error && (
           <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
             {error}
           </div>
         )}
@@ -270,29 +248,6 @@ export default function App() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">Version</span>
                       <span className="font-medium">{component.version}</span>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Consistency Type
-                      </label>
-                      <select
-                        value={component.consistencyType}
-                        onChange={e =>
-                          handleConsistencyTypeChange(
-                            component.id,
-                            component.microserviceId!,
-                            e.target.value as ConsistencyType,
-                            component
-                          )
-                        }
-                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                      >
-                        {Object.values(ConsistencyType).map(type => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
                     </div>
                     <div className="flex gap-2">
                       <button

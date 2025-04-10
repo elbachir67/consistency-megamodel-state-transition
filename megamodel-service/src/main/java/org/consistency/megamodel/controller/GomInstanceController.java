@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -19,18 +20,18 @@ public class GomInstanceController {
         return gomInstanceService.getInstancesByGomId(gomId);
     }
 
+    @GetMapping("/gom-instances/{instanceId}")
+    public ResponseEntity<Map<String, Object>> getInstanceDetails(@PathVariable String instanceId) {
+        return gomInstanceService.getInstanceDetails(instanceId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping("/goms/{gomId}/instances")
     public GomInstanceEntity createInstance(
             @PathVariable String gomId,
             @RequestBody CreateInstanceRequest request) {
         return gomInstanceService.createInstance(gomId, request.getName());
-    }
-
-    @GetMapping("/gom-instances/{instanceId}")
-    public ResponseEntity<GomInstanceEntity> getInstance(@PathVariable String instanceId) {
-        return gomInstanceService.getInstance(instanceId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/gom-instances/{instanceId}")

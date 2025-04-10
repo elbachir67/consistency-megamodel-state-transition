@@ -79,7 +79,7 @@ export const gomApi = {
     return response.json();
   },
 
-  async getInstance(instanceId: string): Promise<GomInstance> {
+  async getInstanceDetails(instanceId: string): Promise<any> {
     const response = await fetch(
       `${API_BASE_URL}/gom-instances/${instanceId}`,
       {
@@ -88,7 +88,7 @@ export const gomApi = {
         credentials: "include",
       }
     );
-    if (!response.ok) throw new Error("Failed to fetch GOM instance");
+    if (!response.ok) throw new Error("Failed to fetch GOM instance details");
     return response.json();
   },
 

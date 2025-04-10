@@ -2,6 +2,7 @@ package org.consistency.megamodel.service;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.consistency.megamodel.event.StateChangeEvent;
 import org.consistency.megamodel.model.*;
 import org.springframework.context.ApplicationEventPublisher;
@@ -12,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StateTransitionService {
@@ -46,7 +48,6 @@ public class StateTransitionService {
         entity.setTimestamp(LocalDateTime.now());
         componentModelServiceRepo.save(entity);
         publishStateChange(entity, oldState);
-        metricsService.recordStateTransition(ComponentState.MODIFIED);
     }
     
     private void applyConsistencyBasedTransition(ComponentModelServiceEntity service, ComponentModelServiceEntity modifiedEntity) {
@@ -63,7 +64,6 @@ public class StateTransitionService {
             
             componentModelServiceRepo.save(service);
             publishStateChange(service, oldState);
-            metricsService.recordStateTransition(newState);
         }
     }
     
@@ -122,9 +122,10 @@ public class StateTransitionService {
             entity.getStalenessBound() != null && 
             LocalDateTime.now().isAfter(entity.getStalenessBound())) {
             
+            ComponentState oldState = entity.getState();
             entity.setState(ComponentState.INVALID);
             componentModelServiceRepo.save(entity);
-            metricsService.recordStateTransition(ComponentState.INVALID);
+            publishStateChange(entity, oldState);
             handleInvalidState(entity);
         }
     }
@@ -159,7 +160,6 @@ public class StateTransitionService {
         
         componentModelServiceRepo.save(entity);
         publishStateChange(entity, oldState);
-        metricsService.recordStateTransition(newState);
     }
     
     public ComponentModelServiceEntity findAuthoritativeSource(String componentId) {
@@ -183,6 +183,12 @@ public class StateTransitionService {
     
     private void publishStateChange(ComponentModelServiceEntity entity, ComponentState oldState) {
         if (oldState != entity.getState()) {
+            log.debug("Publishing state change event: {} -> {} for component {} in microservice {}",
+                oldState,
+                entity.getState(),
+                entity.getComponentModel().getId(),
+                entity.getMicroservice().getId());
+                
             eventPublisher.publishEvent(new StateChangeEvent(
                 this,
                 entity.getMicroservice().getId(),
@@ -191,7 +197,21 @@ public class StateTransitionService {
                 entity.getState(),
                 entity.getVersion()
             ));
+
+            // Record the transition in metrics
+            metricsService.recordStateTransition(
+                entity.getComponentModel().getId(),
+                entity.getMicroservice().getId(),
+                oldState,
+                entity.getState()
+            );
         }
+    }
+
+    public ComponentModelServiceEntity getComponentState(String microserviceId, String componentId) {
+        return componentModelServiceRepo
+            .findByMicroserviceIdAndComponentModelId(microserviceId, componentId)
+            .orElse(null);
     }
     
     private ComponentModelServiceEntity getOrCreateComponentModelService(String microserviceId, String componentId) {

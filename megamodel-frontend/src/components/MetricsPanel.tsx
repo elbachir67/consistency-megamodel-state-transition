@@ -1,11 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { BarChart, Activity } from "lucide-react";
+import { BarChart, Activity, Clock, AlertCircle } from "lucide-react";
 import { ComponentState } from "../types/msi";
 
 interface Metrics {
   stateDistribution: Record<ComponentState, number>;
   totalOperations: number;
   transitionCounts: Record<ComponentState, number>;
+  recentTransitions: Array<{
+    componentId: string;
+    microserviceId: string;
+    fromState: ComponentState;
+    toState: ComponentState;
+    timestamp: string;
+  }>;
 }
 
 export function MetricsPanel() {
@@ -15,28 +22,34 @@ export function MetricsPanel() {
 
   useEffect(() => {
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 5000); // Update every 5 seconds
+    const interval = setInterval(fetchMetrics, 5000);
     return () => clearInterval(interval);
   }, []);
 
   async function fetchMetrics() {
     try {
-      const [distribution, operations, transitions] = await Promise.all([
-        fetch("http://localhost:8080/api/metrics/state-distribution").then(
-          res => res.json()
-        ),
-        fetch("http://localhost:8080/api/metrics/total-operations").then(res =>
-          res.json()
-        ),
-        fetch("http://localhost:8080/api/metrics/transition-counts").then(res =>
-          res.json()
-        ),
-      ]);
+      const [distribution, operations, transitions, recent] = await Promise.all(
+        [
+          fetch("http://localhost:8080/api/metrics/state-distribution").then(
+            res => res.json()
+          ),
+          fetch("http://localhost:8080/api/metrics/total-operations").then(
+            res => res.json()
+          ),
+          fetch("http://localhost:8080/api/metrics/transition-counts").then(
+            res => res.json()
+          ),
+          fetch("http://localhost:8080/api/metrics/recent-transitions").then(
+            res => res.json()
+          ),
+        ]
+      );
 
       setMetrics({
         stateDistribution: distribution,
         totalOperations: operations,
         transitionCounts: transitions,
+        recentTransitions: recent,
       });
       setError(null);
     } catch (error) {
@@ -77,7 +90,8 @@ export function MetricsPanel() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800 flex items-center gap-2">
+        <AlertCircle className="h-5 w-5" />
         {error}
       </div>
     );
@@ -118,6 +132,44 @@ export function MetricsPanel() {
                   </div>
                 )
               )}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-3">
+              Recent State Transitions
+            </h4>
+            <div className="space-y-2">
+              {metrics.recentTransitions.map((transition, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between bg-gray-50 p-3 rounded-lg text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">
+                      {transition.microserviceId} → {transition.componentId}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStateColor(
+                        transition.fromState
+                      )}`}
+                    >
+                      {transition.fromState}
+                    </span>
+                    <span className="text-gray-400">→</span>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStateColor(
+                        transition.toState
+                      )}`}
+                    >
+                      {transition.toState}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

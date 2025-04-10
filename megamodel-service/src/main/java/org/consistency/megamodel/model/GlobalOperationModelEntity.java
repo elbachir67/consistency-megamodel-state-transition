@@ -14,6 +14,9 @@ public class GlobalOperationModelEntity {
     private String name;
     private String description;
     
+    @OneToMany(mappedBy = "gom", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<GomRequirementEntity> requirements = new ArrayList<>();
+    
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "gom_id")
     private List<MicroserviceRequirementEntity> microserviceRequirements = new ArrayList<>();
